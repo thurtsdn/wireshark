@@ -217,14 +217,15 @@ static int hf_openflow_v4_experimenter_exp_type = -1;
 /* TT extension (chen weihang) */
 static int hf_openflow_v4_exp_tt_flow_ctrl_command = -1;
 static int hf_openflow_v4_exp_tt_flow_ctrl_type = -1;
-static int hf_openflow_v4_exp_tt_flow_ctrl_flow_number = -1;
+static int hf_openflow_v4_exp_tt_flow_ctrl_flow_count = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_port = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_etype = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_flow_id = -1;
-static int hf_openflow_v4_exp_tt_flow_mod_scheduled_time = -1;
+static int hf_openflow_v4_exp_tt_flow_mod_base_offset = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_period = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_buffer_id = -1;
-static int hf_openflow_v4_exp_tt_flow_mod_pkt_size = -1;
+static int hf_openflow_v4_exp_tt_flow_mod_packet_size = -1;
+static int hf_openflow_v4_exp_tt_flow_mod_execute_time = -1;
 /* TT extension end. */
 static int hf_openflow_v4_switch_features_datapath_id = -1;
 static int hf_openflow_v4_switch_features_n_buffers = -1;
@@ -1666,7 +1667,8 @@ dissect_openflow_echo_v4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree
 /* TT extension (chen weihang) */
 static const value_string openflow_v4_tt_flow_ctrl_command_values[] = {
     { 0, "ONF_TFCC_ADD" },
-    { 1, "ONF_TFCC_DELETE" },
+    { 1, "ONF_TFCC_CLEAR" },
+    { 2, "ONF_TFCC_QUERY" },
     { 0, NULL }
 };
 
@@ -1675,6 +1677,10 @@ static const value_string openflow_v4_tt_flow_ctrl_type_values[] = {
     { 1, "ONF_TFCT_DOWNLOAD_START_REPLY" },
     { 2, "ONF_TFCT_DOWNLOAD_END_REQUEST" },
     { 3, "ONF_TFCT_DOWNLOAD_END_REPLY" },
+    { 4, "ONF_TFCT_CLEAR_OLD_REQUEST" },
+    { 5, "ONF_TFCT_CLEAR_OLD_REPLY" },
+    { 6, "ONF_TFCT_QUERY_TABLE_REQUEST" },
+    { 7, "ONF_TFCT_QUERY_TABLE_REPLY" },
     { 0, NULL }
 };
 
@@ -1687,55 +1693,56 @@ static const value_string openflow_v4_tt_entry_type_values[] = {
 static void 
 dissect_openflow_exp_tt_flow_control_v4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
 {
-    /* uint8_t command */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_command, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset++;
-    
-    /* uint8_t type */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_type, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset++;
-    
-    /* skip pad */
+    /* uint16_t command */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_command, tvb, offset, 2, ENC_BIG_ENDIAN);
     offset+=2;
-
-    /* uint32_t flow_number */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_flow_number, tvb, offset, 4, ENC_BIG_ENDIAN);
+    
+    /* uint16_t type */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_type, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset+=2;
+    
+    /* uint32_t flow_count */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_flow_count, tvb, offset, 4, ENC_BIG_ENDIAN);
     /*offset+=4*/
 }
 
 static void
 dissect_openflow_exp_tt_flow_mod_v4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
 {
-    /* uint8_t port */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_port, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset++;
+    /* uint32_t port */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_port, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
 
-    /* uint8_t etype */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_etype, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset++;
+    /* uint32_t etype */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_etype, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
 
-    /* uint8_t flow_id */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_flow_id, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset++;
+    /* uint32_t flow_id */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_flow_id, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
 
     /* skip pad */
-    offset++;
-
-    /* uint32_t scheduled_time */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_scheduled_time, tvb, offset, 4, ENC_BIG_ENDIAN);
     offset+=4;
 
-    /* uint32_t period */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_period, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset+=4;
+    /* uint64_t base_offset */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_base_offset, tvb, offset, 8, ENC_BIG_ENDIAN);
+    offset+=8;
+
+    /* uint64_t period */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_period, tvb, offset, 8, ENC_BIG_ENDIAN);
+    offset+=8;
 
     /* uint32_t buffer_id */
     proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_buffer_id, tvb, offset, 4, ENC_BIG_ENDIAN);
     offset+=4;
 
-    /* uint32_t pkt_size */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_pkt_size, tvb, offset, 4, ENC_BIG_ENDIAN);
-    /*offset+=4*/
+    /* uint32_t packet_size */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_packet_size, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* uint64_t execute_time */
+    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_mod_execute_time, tvb, offset, 8, ENC_BIG_ENDIAN);
+    /*offset+=8;*/
 }
 /* TT extension end. */
 
@@ -5538,53 +5545,58 @@ proto_register_openflow_v4(void)
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_ctrl_command,
-            { "TT Flow control command", "openflow_v4.experimenter.tt_flow_control.command", 
-               FT_UINT8, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_command_values), 0x0,
+            { "TT Flow Control Command", "openflow_v4.experimenter.tt_flow_control.command", 
+               FT_UINT16, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_command_values), 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_ctrl_type,
-            { "TT Flow control type", "openflow_v4.experimenter.tt_flow_control.type",
-               FT_UINT8, BASE_HEX, VALS(openflow_v4_tt_flow_ctrl_type_values), 0x0,
+            { "TT Flow Control Type", "openflow_v4.experimenter.tt_flow_control.type",
+               FT_UINT16, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_type_values), 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v4_exp_tt_flow_ctrl_flow_number,
-            { "TT Flow number", "openflow_v4.experimenter.tt_flow_control.flow_number",
+        { &hf_openflow_v4_exp_tt_flow_ctrl_flow_count,
+            { "TT Flow Count", "openflow_v4.experimenter.tt_flow_control.flow_count",
                FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_mod_port,
-            { "TT Entry port", "openflwo_v4.experimenter.tt_flow_mod.port",
-               FT_UINT8, BASE_DEC, NULL, 0x0,
+            { "TT Entry Port", "openflwo_v4.experimenter.tt_flow_mod.port",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_mod_etype,
-            { "TT Entry type", "openflow_v4.experimenter.tt_flow_mod.etype",
-               FT_UINT8, BASE_DEC, VALS(openflow_v4_tt_entry_type_values), 0x0,
+            { "TT Entry Type", "openflow_v4.experimenter.tt_flow_mod.etype",
+               FT_UINT32, BASE_DEC, VALS(openflow_v4_tt_entry_type_values), 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_mod_flow_id,
             { "TT Entry Flow ID", "openflow_v4.experimenter.tt_flow_mod.flow_id",
-               FT_UINT8, BASE_DEC, NULL, 0x0,
+               FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v4_exp_tt_flow_mod_scheduled_time,
-            { "TT scheduled time", "openflow_v4.experimenter.tt_flow_mod.scheduled_time",
-               FT_UINT32, BASE_DEC, NULL, 0x0,
+        { &hf_openflow_v4_exp_tt_flow_mod_base_offset,
+            { "TT Base Offset", "openflow_v4.experimenter.tt_flow_mod.base_offset",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_mod_period,
-            { "TT period", "openflow_v4.experimenter.tt_flow_mod.period",
-               FT_UINT32, BASE_DEC, NULL, 0x0,
+            { "TT Period", "openflow_v4.experimenter.tt_flow_mod.period",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_mod_buffer_id,
-            { "TT buffer_id", "openflow_v4.experimenter.tt_flow_mod.buffer_id",
+            { "TT Buffer ID", "openflow_v4.experimenter.tt_flow_mod.buffer_id",
                FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v4_exp_tt_flow_mod_pkt_size,
-            { "TT pkt_size", "openflow_v4.experimenter.tt_flow_mod.pkt_size",
+        { &hf_openflow_v4_exp_tt_flow_mod_packet_size,
+            { "TT Packet Size", "openflow_v4.experimenter.tt_flow_mod.packet_size",
                FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v4_exp_tt_flow_mod_execute_time,
+            { "TT Execute Time", "openflow_v4.experimenter.tt_flow_mod.execute_time",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_switch_features_datapath_id,
