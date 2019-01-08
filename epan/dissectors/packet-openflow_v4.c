@@ -215,7 +215,6 @@ static int hf_openflow_v4_echo_data = -1;
 static int hf_openflow_v4_experimenter_experimenter = -1;
 static int hf_openflow_v4_experimenter_exp_type = -1;
 /* TT extension (chen weihang) */
-static int hf_openflow_v4_exp_tt_flow_ctrl_command = -1;
 static int hf_openflow_v4_exp_tt_flow_ctrl_type = -1;
 static int hf_openflow_v4_exp_tt_flow_ctrl_flow_count = -1;
 static int hf_openflow_v4_exp_tt_flow_mod_port = -1;
@@ -1665,13 +1664,6 @@ dissect_openflow_echo_v4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree
 }
 
 /* TT extension (chen weihang) */
-static const value_string openflow_v4_tt_flow_ctrl_command_values[] = {
-    { 0, "ONF_TFCC_ADD" },
-    { 1, "ONF_TFCC_CLEAR" },
-    { 2, "ONF_TFCC_QUERY" },
-    { 0, NULL }
-};
-
 static const value_string openflow_v4_tt_flow_ctrl_type_values[] = {
     { 0, "ONF_TFCT_DOWNLOAD_START_REQUEST" },
     { 1, "ONF_TFCT_DOWNLOAD_START_REPLY" },
@@ -1693,13 +1685,9 @@ static const value_string openflow_v4_tt_entry_type_values[] = {
 static void 
 dissect_openflow_exp_tt_flow_control_v4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
 {
-    /* uint16_t command */
-    proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_command, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset+=2;
-    
-    /* uint16_t type */
+    /* uint32_t type */
     proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_type, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset+=2;
+    offset+=4;
     
     /* uint32_t flow_count */
     proto_tree_add_item(tree, hf_openflow_v4_exp_tt_flow_ctrl_flow_count, tvb, offset, 4, ENC_BIG_ENDIAN);
@@ -5544,14 +5532,9 @@ proto_register_openflow_v4(void)
                FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v4_exp_tt_flow_ctrl_command,
-            { "TT Flow Control Command", "openflow_v4.experimenter.tt_flow_control.command", 
-               FT_UINT16, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_command_values), 0x0,
-               NULL, HFILL }
-        },
         { &hf_openflow_v4_exp_tt_flow_ctrl_type,
             { "TT Flow Control Type", "openflow_v4.experimenter.tt_flow_control.type",
-               FT_UINT16, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_type_values), 0x0,
+               FT_UINT32, BASE_DEC, VALS(openflow_v4_tt_flow_ctrl_type_values), 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v4_exp_tt_flow_ctrl_flow_count,
