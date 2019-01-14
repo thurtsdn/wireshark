@@ -28,6 +28,9 @@ static dissector_handle_t eth_withoutfcs_handle;
 static int proto_openflow_v5 = -1;
 static int hf_openflow_v5_version = -1;
 static int hf_openflow_v5_type = -1;
+/* TT extension (chen weihang) */
+static int hf_openflow_v5_tt_ext_type = -1;
+/* TT extension end. */
 static int hf_openflow_v5_length = -1;
 static int hf_openflow_v5_xid = -1;
 static int hf_openflow_v5_oxm_class = -1;
@@ -262,6 +265,22 @@ static int hf_openflow_v5_error_experimenter = -1;
 static int hf_openflow_v5_echo_data = -1;
 static int hf_openflow_v5_experimenter_experimenter = -1;
 static int hf_openflow_v5_experimenter_exp_type = -1;
+/* TT extension (chen weihang) */
+static int hf_openflow_v5_exp_tt_flow_ctrl_type = -1;
+static int hf_openflow_v5_exp_tt_flow_ctrl_flow_count = -1;
+static int hf_openflow_v5_exp_tt_flow_prop_type = -1;
+static int hf_openflow_v5_exp_tt_flow_prop_length = -1;
+static int hf_openflow_v5_exp_tt_flow_prop_experimenter_experimenter = -1;
+static int hf_openflow_v5_exp_tt_flow_prop_experimenter_exp_type = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_port = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_etype = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_flow_id = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_base_offset = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_period = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_buffer_id = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_packet_size = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_execute_time = -1;
+/* TT extension end. */
 static int hf_openflow_v5_switch_features_datapath_id = -1;
 static int hf_openflow_v5_switch_features_n_buffers = -1;
 static int hf_openflow_v5_switch_features_n_tables = -1;
@@ -817,6 +836,9 @@ static gint ett_openflow_v5_bundle_control_flags = -1;
 static gint ett_openflow_v5_bundle_prop = -1;
 static gint ett_openflow_v5_bundle_add_flags = -1;
 static gint ett_openflow_v5_bundle_add_message = -1;
+/* TT extension (chen weihang) */
+static gint ett_openflow_v5_exp_tt_flow_prop = -1;
+/* TT extension end. */
 
 static expert_field ei_openflow_v5_match_undecoded = EI_INIT;
 static expert_field ei_openflow_v5_oxm_undecoded = EI_INIT;
@@ -838,6 +860,9 @@ static expert_field ei_openflow_v5_multipart_reply_undecoded = EI_INIT;
 static expert_field ei_openflow_v5_queue_desc_prop_undecoded = EI_INIT;
 static expert_field ei_openflow_v5_async_config_prop_undecoded = EI_INIT;
 static expert_field ei_openflow_v5_bundle_prop_undecoded = EI_INIT;
+/* TT extension (chen weihang) */
+static expert_field ei_openflow_v5_tt_flow_prop_undecoded = EI_INIT;
+/* TT extension end. */
 static expert_field ei_openflow_v5_message_undecoded = EI_INIT;
 static expert_field ei_openflow_v5_length_too_short = EI_INIT;
 
@@ -916,6 +941,17 @@ static const value_string openflow_v5_type_values[] = {
     { 0,                             NULL }
 };
 static value_string_ext openflow_v5_type_values_ext = VALUE_STRING_EXT_INIT(openflow_v5_type_values);
+
+/* TT extension (chen weihang) */
+#define ONF_ET_TT_FLOW_CONTROL         2400
+#define ONF_ET_TT_FLOW_MOD             2401
+static const value_string openflow_v5_tt_ext_type_values[] = {
+    { ONF_ET_TT_FLOW_CONTROL,       "ONF_ET_TT_FLOW_CONTROL" },
+    { ONF_ET_TT_FLOW_MOD,           "ONF_ET_TT_FLOW_MOD" },
+    { 0,                            NULL }
+};
+static value_string_ext openflow_v5_tt_ext_type_values_ext = VALUE_STRING_EXT_INIT(openflow_v5_tt_ext_type_values);
+/* TT extension end. */
 
 static int
 dissect_openflow_header_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
@@ -1894,22 +1930,164 @@ dissect_openflow_echo_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree
     }
 }
 
+/* TT extension (chen weihang) */
+#define ONF_ET_TFPT_EXPERIMENTER 0xFFFF
+static const value_string openflow_v5_tt_flow_prop_type_values[] = {
+    { ONF_ET_TFPT_EXPERIMENTER, "ONF_ET_TFPT_EXPERIMENTER" },
+    { 0,                        NULL }
+};
+
+static int
+dissect_openflow_tt_flow_prop_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
+{
+    proto_tree *prop_tree;
+    guint16 prop_type;
+    guint16 prop_len;
+
+    prop_type = tvb_get_ntohs(tvb, offset);
+    prop_len = tvb_get_ntohs(tvb, offset + 2);
+
+    prop_tree = proto_tree_add_subtree(tree, tvb, offset, prop_len, ett_openflow_v5_exp_tt_flow_prop, NULL, "TT Flow prop");
+
+    /* uint16_t type; */
+    proto_tree_add_item(prop_tree, hf_openflow_v5_exp_tt_flow_prop_type, tvb, offset, 2, ENC_BIG_ENDIAN);
+
+    /* uint16_t length; */
+    proto_tree_add_item(prop_tree, hf_openflow_v5_exp_tt_flow_prop_length, tvb, offset, 2, ENC_BIG_ENDIAN);
+
+    switch (prop_type) {
+    case ONF_ET_TFPT_EXPERIMENTER:
+        /* uint32_t experimenter; */
+        proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_prop_experimenter_experimenter, tvb, offset, 4, ENC_BIG_ENDIAN);
+        offset+=4;
+
+        /* uint32_t exp_type; */
+        proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_prop_experimenter_exp_type, tvb, offset, 4, ENC_BIG_ENDIAN);
+        offset+=4;
+
+        /* uint32_t experimenter_data[0]; */
+        proto_tree_add_expert_format(tree, pinfo, &ei_openflow_v5_tt_flow_prop_undecoded,
+                                     tvb, offset, prop_len - 12, "Experimenter TT flow prop body.");
+        offset += prop_len - 12;
+        break;
+
+    default:
+        proto_tree_add_expert_format(tree, pinfo, &ei_openflow_v5_tt_flow_prop_undecoded,
+                                     tvb, offset, prop_len - 4, "Unknown TT flow prop body.");
+        offset += prop_len - 4;
+        break;
+    }
+
+    return offset;
+}
+
+static const value_string openflow_v5_tt_flow_ctrl_type_values[] = {
+    { 0, "ONF_TFCT_ADD_TABLE_REQUEST" },
+    { 1, "ONF_TFCT_ADD_TABLE_REPLY" },
+    { 2, "ONF_TFCT_DELETE_TABLE_REQUEST" },
+    { 3, "ONF_TFCT_DELETE_TABLE_REPLY" },
+    { 4, "ONF_TFCT_QUERY_TABLE_REQUEST" },
+    { 5, "ONF_TFCT_QUERY_TABLE_REPLY" },
+    { 0, NULL }
+};
+
+static const value_string openflow_v5_tt_entry_type_values[] = {
+    { 0, "ONF_TT_SEND" },
+    { 1, "ONF_TT_RECV" },
+    { 0, NULL }
+};
+
+static void 
+dissect_openflow_exp_tt_flow_control_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
+{
+    /* uint32_t type */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_type, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset+=4;
+    
+    /* uint32_t flow_count */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_flow_count, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* struct ofp_tt_flow_prop_header properties[0];  */
+    while (offset < length) {
+        offset = dissect_openflow_tt_flow_prop_v5(tvb, pinfo, tree, offset, length);
+    }
+}
+
+static void
+dissect_openflow_exp_tt_flow_mod_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
+{
+    /* uint32_t port */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_port, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* uint32_t etype */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_etype, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* uint32_t flow_id */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_flow_id, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* skip pad */
+    offset+=4;
+
+    /* uint64_t base_offset */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_base_offset, tvb, offset, 8, ENC_BIG_ENDIAN);
+    offset+=8;
+
+    /* uint64_t period */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_period, tvb, offset, 8, ENC_BIG_ENDIAN);
+    offset+=8;
+
+    /* uint32_t buffer_id */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_buffer_id, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* uint32_t packet_size */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_packet_size, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
+    /* uint64_t execute_time */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_execute_time, tvb, offset, 8, ENC_BIG_ENDIAN);
+    /*offset+=8;*/
+}
+/* TT extension end. */
 
 static void
 dissect_openflow_experimenter_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length)
 {
+    guint32 type;
+    
     /* uint32_t experimenter; */
     proto_tree_add_item(tree, hf_openflow_v5_experimenter_experimenter, tvb, offset, 4, ENC_BIG_ENDIAN);
     offset+=4;
 
     /* uint32_t exp_type; */
+    type = tvb_get_ntohl(tvb, offset);
     proto_tree_add_item(tree, hf_openflow_v5_experimenter_exp_type, tvb, offset, 4, ENC_BIG_ENDIAN);
     offset+=4;
 
     /* data */
-    if (offset < length) {
-        proto_tree_add_expert_format(tree, pinfo, &ei_openflow_v5_experimenter_undecoded,
-                                     tvb, offset, length - 16, "Experimenter body.");
+    /* TT extension (chen weihang) */
+    switch (type) {
+    case ONF_ET_TT_FLOW_CONTROL:
+        col_append_fstr(pinfo->cinfo, COL_INFO, " (%s)",
+                       val_to_str_ext_const(type, &openflow_v5_tt_ext_type_values_ext, "Unknown message type"));
+        dissect_openflow_exp_tt_flow_control_v5(tvb, pinfo, tree, offset, length);
+        break;
+    case ONF_ET_TT_FLOW_MOD:
+        col_append_fstr(pinfo->cinfo, COL_INFO, " (%s)",
+                       val_to_str_ext_const(type, &openflow_v5_tt_ext_type_values_ext, "Unknown message type"));
+        dissect_openflow_exp_tt_flow_mod_v5(tvb, pinfo, tree, offset, length);
+        break;
+    
+    default:
+        if (offset < length) {
+            proto_tree_add_expert_format(tree, pinfo, &ei_openflow_v5_experimenter_undecoded,
+                                         tvb, offset, length - 16, "Experimenter body.");
+        }
+        break;
     }
 }
 
@@ -5963,6 +6141,11 @@ proto_register_openflow_v5(void)
                FT_UINT8, BASE_DEC | BASE_EXT_STRING, &openflow_v5_type_values_ext, 0x0,
                NULL, HFILL }
         },
+        { &hf_openflow_v5_tt_ext_type,
+            { "TT Type", "openflow_v5.tt_type",
+               FT_UINT32, BASE_DEC | BASE_EXT_STRING, &openflow_v5_tt_ext_type_values_ext, 0x0,
+               NULL, HFILL }
+        },
         { &hf_openflow_v5_xid,
             { "Transaction ID", "openflow_v5.xid",
                FT_UINT32, BASE_DEC, NULL, 0x0,
@@ -7131,6 +7314,76 @@ proto_register_openflow_v5(void)
         { &hf_openflow_v5_experimenter_exp_type,
             { "Experimenter type", "openflow_v5.experimenter.exp_type",
                FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_ctrl_type,
+            { "TT Flow Control Type", "openflow_v5.experimenter.tt_flow_control.type",
+               FT_UINT32, BASE_DEC, VALS(openflow_v5_tt_flow_ctrl_type_values), 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_ctrl_flow_count,
+            { "TT Flow Count", "openflow_v5.experimenter.tt_flow_control.flow_count",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_prop_type,
+            { "Type", "openflow_v5.experimenter.tt_flow_prop.type",
+               FT_UINT16, BASE_DEC, VALS(openflow_v5_tt_flow_prop_type_values), 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_prop_length,
+            { "Length", "openflow_v5.experimenter.tt_flow_prop.length",
+               FT_UINT16, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_prop_experimenter_experimenter,
+            { "Experimenter", "openflow_v5.experimenter.tt_flow_prop.experimenter.experimenter",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_prop_experimenter_exp_type,
+            { "Exp type", "openflow_v5.experimenter.tt_flow_prop.experimenter.exp_type",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_port,
+            { "TT Entry Port", "openflwo_v5.experimenter.tt_flow_mod.port",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_etype,
+            { "TT Entry Type", "openflow_v5.experimenter.tt_flow_mod.etype",
+               FT_UINT32, BASE_DEC, VALS(openflow_v5_tt_entry_type_values), 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_flow_id,
+            { "TT Entry Flow ID", "openflow_v5.experimenter.tt_flow_mod.flow_id",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_base_offset,
+            { "TT Base Offset", "openflow_v5.experimenter.tt_flow_mod.base_offset",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_period,
+            { "TT Period", "openflow_v5.experimenter.tt_flow_mod.period",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_buffer_id,
+            { "TT Buffer ID", "openflow_v5.experimenter.tt_flow_mod.buffer_id",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_packet_size,
+            { "TT Packet Size", "openflow_v5.experimenter.tt_flow_mod.packet_size",
+               FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_execute_time,
+            { "TT Execute Time", "openflow_v5.experimenter.tt_flow_mod.execute_time",
+               FT_UINT64, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v5_switch_features_datapath_id,
@@ -9582,7 +9835,8 @@ proto_register_openflow_v5(void)
         &ett_openflow_v5_bundle_control_flags,
         &ett_openflow_v5_bundle_prop,
         &ett_openflow_v5_bundle_add_flags,
-        &ett_openflow_v5_bundle_add_message
+        &ett_openflow_v5_bundle_add_message,
+        &ett_openflow_v5_exp_tt_flow_prop
     };
 
     static ei_register_info ei[] = {
@@ -9665,6 +9919,10 @@ proto_register_openflow_v5(void)
         {&ei_openflow_v5_bundle_prop_undecoded,
             { "openflow_v5.bundle_prop.undecoded", PI_UNDECODED, PI_NOTE,
               "Unknown bundle prop body.", EXPFILL }
+        },
+        {&ei_openflow_v5_tt_flow_prop_undecoded,
+            { "openflow_v5.tt_flow_prop.undecoded", PI_UNDECODED, PI_NOTE,
+              "Unknown TT flow prop body.", EXPFILL }
         },
         {&ei_openflow_v5_message_undecoded,
             { "openflow_v5.message.undecoded", PI_UNDECODED, PI_NOTE,
