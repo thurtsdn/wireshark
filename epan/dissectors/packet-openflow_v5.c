@@ -266,12 +266,14 @@ static int hf_openflow_v5_echo_data = -1;
 static int hf_openflow_v5_experimenter_experimenter = -1;
 static int hf_openflow_v5_experimenter_exp_type = -1;
 /* TT extension (chen weihang) */
+static int hf_openflow_v5_exp_tt_flow_ctrl_table_id = -1;
 static int hf_openflow_v5_exp_tt_flow_ctrl_type = -1;
-static int hf_openflow_v5_exp_tt_flow_ctrl_flow_count = -1;
 static int hf_openflow_v5_exp_tt_flow_prop_type = -1;
 static int hf_openflow_v5_exp_tt_flow_prop_length = -1;
 static int hf_openflow_v5_exp_tt_flow_prop_experimenter_experimenter = -1;
 static int hf_openflow_v5_exp_tt_flow_prop_experimenter_exp_type = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_table_id = -1;
+static int hf_openflow_v5_exp_tt_flow_mod_metadata = -1;
 static int hf_openflow_v5_exp_tt_flow_mod_port = -1;
 static int hf_openflow_v5_exp_tt_flow_mod_etype = -1;
 static int hf_openflow_v5_exp_tt_flow_mod_flow_id = -1;
@@ -2000,13 +2002,13 @@ static const value_string openflow_v5_tt_entry_type_values[] = {
 static void 
 dissect_openflow_exp_tt_flow_control_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
 {
-    /* uint32_t type */
-    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_type, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset+=4;
+    /* uint16_t table_id */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_table_id, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset+=2;
     
-    /* uint32_t flow_count */
-    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_flow_count, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset+=4;
+    /* uint16_t type */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_ctrl_type, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset+=2;
 
     /* struct ofp_tt_flow_prop_header properties[0];  */
     while (offset < length) {
@@ -2017,6 +2019,17 @@ dissect_openflow_exp_tt_flow_control_v5(tvbuff_t *tvb, packet_info *pinfo _U_, p
 static void
 dissect_openflow_exp_tt_flow_mod_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, guint16 length _U_)
 {
+    /* uint16_t table_id */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_table_id, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset+=2;
+
+    /* uint8_t pad[6] */
+    offset+=6;
+
+    /* uint32_t metadata */
+    proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_metadata, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset+=4;
+
     /* uint32_t port */
     proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_port, tvb, offset, 4, ENC_BIG_ENDIAN);
     offset+=4;
@@ -2027,9 +2040,6 @@ dissect_openflow_exp_tt_flow_mod_v5(tvbuff_t *tvb, packet_info *pinfo _U_, proto
 
     /* uint32_t flow_id */
     proto_tree_add_item(tree, hf_openflow_v5_exp_tt_flow_mod_flow_id, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset+=4;
-
-    /* skip pad */
     offset+=4;
 
     /* uint64_t base_offset */
@@ -7316,14 +7326,14 @@ proto_register_openflow_v5(void)
                FT_UINT32, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v5_exp_tt_flow_ctrl_type,
-            { "TT Flow Control Type", "openflow_v5.experimenter.tt_flow_control.type",
-               FT_UINT32, BASE_DEC, VALS(openflow_v5_tt_flow_ctrl_type_values), 0x0,
+        { &hf_openflow_v5_exp_tt_flow_ctrl_table_id,
+            { "TT Flow Table ID", "openflow_v5.experimenter.tt_flow_control.table_id",
+               FT_UINT16, BASE_DEC, NULL, 0x0,
                NULL, HFILL }
         },
-        { &hf_openflow_v5_exp_tt_flow_ctrl_flow_count,
-            { "TT Flow Count", "openflow_v5.experimenter.tt_flow_control.flow_count",
-               FT_UINT32, BASE_DEC, NULL, 0x0,
+        { &hf_openflow_v5_exp_tt_flow_ctrl_type,
+            { "TT Flow Control Type", "openflow_v5.experimenter.tt_flow_control.type",
+               FT_UINT16, BASE_DEC, VALS(openflow_v5_tt_flow_ctrl_type_values), 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v5_exp_tt_flow_prop_type,
@@ -7344,6 +7354,16 @@ proto_register_openflow_v5(void)
         { &hf_openflow_v5_exp_tt_flow_prop_experimenter_exp_type,
             { "Exp type", "openflow_v5.experimenter.tt_flow_prop.experimenter.exp_type",
                FT_UINT32, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_table_id,
+            { "TT Entry Table ID", "openflwo_v5.experimenter.tt_flow_mod.table_id",
+               FT_UINT16, BASE_DEC, NULL, 0x0,
+               NULL, HFILL }
+        },
+        { &hf_openflow_v5_exp_tt_flow_mod_metadata,
+            { "TT Entry Metadata", "openflwo_v5.experimenter.tt_flow_mod.metadata",
+               FT_UINT32, BASE_HEX, NULL, 0x0,
                NULL, HFILL }
         },
         { &hf_openflow_v5_exp_tt_flow_mod_port,
